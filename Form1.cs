@@ -23,7 +23,7 @@ namespace SchoolApp
         {
             InitializeComponent();
 
-            // navigasi antar halaman
+            
             btnNavStudent.Click += (s, e) => Navigate(Page.Student);
             btnNavVisitor.Click += (s, e) => Navigate(Page.Visitor);
 
@@ -39,11 +39,11 @@ namespace SchoolApp
             dgvData.CellClick += dgvData_CellClick;
             dgvVisitors.CellClick += dgvVisitors_CellClick;
 
-            // pencarian siswa (otomatis saat mengetik)
+            
             txtSearchStudent.TextChanged += (s, e) =>
                 ShowData(txtSearchStudent.Text.Trim());
 
-            Navigate(Page.Student); // halaman awal
+            Navigate(Page.Student); 
         }
 
         private void Navigate(Page page)
@@ -51,7 +51,7 @@ namespace SchoolApp
             pnlStudent.Visible = page == Page.Student;
             pnlVisitor.Visible = page == Page.Visitor;
 
-            // tandai tombol menu yang sedang aktif
+            
             btnNavStudent.BackColor = page == Page.Student
                 ? SystemColors.GradientActiveCaption
                 : SystemColors.ControlLight;
@@ -59,7 +59,7 @@ namespace SchoolApp
                 ? SystemColors.GradientActiveCaption
                 : SystemColors.ControlLight;
 
-            // muat ulang data setiap halaman dibuka
+            
             if (page == Page.Student)
             {
                 Text = "School App - Students";
@@ -158,7 +158,7 @@ namespace SchoolApp
             }
             catch (MySqlException ex)
             {
-                // 1062 = duplicate entry (NIS sudah ada)
+                
                 if (ex.Number == 1062)
                     MessageBox.Show("NIS sudah terdaftar");
                 else
