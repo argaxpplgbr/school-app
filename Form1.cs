@@ -1,4 +1,3 @@
-
 using System;
 using System.Data;
 using System.Windows.Forms;
@@ -14,9 +13,20 @@ namespace SchoolApp
         private int studentId = 0;
         private int visitorId = 0;
 
+        // ===== ROUTING: daftar halaman yang bisa dibuka =====
+        private enum Page
+        {
+            Student,
+            Visitor
+        }
+
         public Form1()
         {
             InitializeComponent();
+
+            // navigasi antar halaman
+            btnNavStudent.Click += (s, e) => Navigate(Page.Student);
+            btnNavVisitor.Click += (s, e) => Navigate(Page.Visitor);
 
             btnSave.Click += btnSave_Click;
             btnSaveVisitors.Click += btnSaveVisitors_Click;
@@ -30,11 +40,46 @@ namespace SchoolApp
             dgvData.CellClick += dgvData_CellClick;
             dgvVisitors.CellClick += dgvVisitors_CellClick;
 
-            ShowData();
-            ShowVisitors();
+            // pencarian siswa (otomatis saat mengetik)
+            txtSearchStudent.TextChanged += (s, e) =>
+                ShowData(txtSearchStudent.Text.Trim());
+
+            Navigate(Page.Student); // halaman awal
         }
 
-        private void ShowVisitors()
+        // =====================================================
+        //  ROUTER: pindah halaman Student <-> Visitor
+        // =====================================================
+        private void Navigate(Page page)
+        {
+            pnlStudent.Visible = page == Page.Student;
+            pnlVisitor.Visible = page == Page.Visitor;
+
+            // tandai tombol menu yang sedang aktif
+            btnNavStudent.BackColor = page == Page.Student
+                ? SystemColors.GradientActiveCaption
+                : SystemColors.ControlLight;
+            btnNavVisitor.BackColor = page == Page.Visitor
+                ? SystemColors.GradientActiveCaption
+                : SystemColors.ControlLight;
+
+            // muat ulang data setiap halaman dibuka
+            if (page == Page.Student)
+            {
+                Text = "School App - Students";
+                ShowData(txtSearchStudent.Text.Trim());
+            }
+            else
+            {
+                Text = "School App - Visitors";
+                ShowVisitors();
+            }
+        }
+
+        // =====================================================
+        //  STUDENTS
+        // =====================================================
+        private void ShowData(string keyword = "")
         {
             try
             {
@@ -42,36 +87,25 @@ namespace SchoolApp
                     new MySqlConnection(connectionString);
 
                 string query =
-                    "SELECT id, visitors, institution FROM visitors";
+                    "SELECT id, nis, name, class_name, address " +
+                    "FROM students " +
+                    "WHERE name LIKE @k OR nis LIKE @k OR class_name LIKE @k " +
+                    "ORDER BY name";
 
                 using MySqlDataAdapter adapter =
                     new MySqlDataAdapter(query, conn);
 
-                DataTable tabel = new DataTable();
-                adapter.Fill(tabel);
-                dgvVisitors.DataSource = tabel;
-            }
-            catch (MySqlException ex)
-            {
-                MessageBox.Show("Database bermasalah: " + ex.Message);
-            }
-        }
-
-        private void ShowData()
-        {
-            try
-            {
-                using MySqlConnection conn =
-                    new MySqlConnection(connectionString);
-
-                string query = "SELECT id, nis, name FROM students";
-
-                using MySqlDataAdapter adapter =
-                    new MySqlDataAdapter(query, conn);
+                adapter.SelectCommand.Parameters.AddWithValue(
+                    "@k", "%" + keyword + "%");
 
                 DataTable tabel = new DataTable();
                 adapter.Fill(tabel);
                 dgvData.DataSource = tabel;
+
+                dgvData.Columns["nis"].HeaderText = "NIS";
+                dgvData.Columns["name"].HeaderText = "Nama";
+                dgvData.Columns["class_name"].HeaderText = "Kelas";
+                dgvData.Columns["address"].HeaderText = "Alamat";
             }
             catch (MySqlException ex)
             {
@@ -79,26 +113,31 @@ namespace SchoolApp
             }
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private void ClearStudentForm()
         {
+            txtName.Clear();
+            txtNIS.Clear();
+            txtClass.Clear();
+            txtAddress.Clear();
+            studentId = 0;
         }
 
-        private void label2_Click(object sender, EventArgs e)
+        private bool StudentFormValid()
         {
-        }
-
-        
-
-        private void btnSave_Click(object sender, EventArgs e)
-        {
-            string nama = txtName.Text.Trim();
-            string nis = txtNIS.Text.Trim();
-
-            if (nama == "" || nis == "")
+            if (txtName.Text.Trim() == "" ||
+                txtNIS.Text.Trim() == "" ||
+                txtClass.Text.Trim() == "")
             {
-                MessageBox.Show("Nama dan NIS tidak boleh kosong");
-                return;
+                MessageBox.Show("Nama, NIS, dan Kelas tidak boleh kosong");
+                return false;
             }
+            return true;
+        }
+
+        private void btnSave_Click(object? sender, EventArgs e)
+        {
+            if (!StudentFormValid())
+                return;
 
             try
             {
@@ -106,32 +145,36 @@ namespace SchoolApp
                     new MySqlConnection(connectionString);
 
                 string query =
-                    "INSERT INTO students (name, nis) VALUES (@name, @nis)";
+                    "INSERT INTO students (name, nis, class_name, address) " +
+                    "VALUES (@name, @nis, @class, @address)";
 
                 using MySqlCommand cmd = new MySqlCommand(query, conn);
 
-                cmd.Parameters.AddWithValue("@name", nama);
-                cmd.Parameters.AddWithValue("@nis", nis);
+                cmd.Parameters.AddWithValue("@name", txtName.Text.Trim());
+                cmd.Parameters.AddWithValue("@nis", txtNIS.Text.Trim());
+                cmd.Parameters.AddWithValue("@class", txtClass.Text.Trim());
+                cmd.Parameters.AddWithValue("@address", txtAddress.Text.Trim());
 
                 conn.Open();
                 cmd.ExecuteNonQuery();
 
                 MessageBox.Show("Data student berhasil disimpan");
 
-                txtName.Clear();
-                txtNIS.Clear();
-
-                studentId = 0;
-                ShowData();
+                ClearStudentForm();
+                ShowData(txtSearchStudent.Text.Trim());
             }
             catch (MySqlException ex)
             {
-                MessageBox.Show("Database bermasalah: " + ex.Message);
+                // 1062 = duplicate entry (NIS sudah ada)
+                if (ex.Number == 1062)
+                    MessageBox.Show("NIS sudah terdaftar");
+                else
+                    MessageBox.Show("Database bermasalah: " + ex.Message);
             }
         }
 
         private void dgvData_CellClick(
-            object sender, DataGridViewCellEventArgs e)
+            object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0)
                 return;
@@ -139,26 +182,22 @@ namespace SchoolApp
             DataGridViewRow row = dgvData.Rows[e.RowIndex];
 
             studentId = Convert.ToInt32(row.Cells["id"].Value);
-            txtNIS.Text = row.Cells["nis"].Value.ToString();
-            txtName.Text = row.Cells["name"].Value.ToString();
+            txtNIS.Text = row.Cells["nis"].Value?.ToString() ?? "";
+            txtName.Text = row.Cells["name"].Value?.ToString() ?? "";
+            txtClass.Text = row.Cells["class_name"].Value?.ToString() ?? "";
+            txtAddress.Text = row.Cells["address"].Value?.ToString() ?? "";
         }
 
-        private void btnUpdateStudent_Click(object sender, EventArgs e)
+        private void btnUpdateStudent_Click(object? sender, EventArgs e)
         {
-            string nama = txtName.Text.Trim();
-            string nis = txtNIS.Text.Trim();
-
             if (studentId == 0)
             {
                 MessageBox.Show("Pilih student dari tabel terlebih dahulu");
                 return;
             }
 
-            if (nama == "" || nis == "")
-            {
-                MessageBox.Show("Nama dan NIS tidak boleh kosong");
+            if (!StudentFormValid())
                 return;
-            }
 
             try
             {
@@ -166,12 +205,15 @@ namespace SchoolApp
                     new MySqlConnection(connectionString);
 
                 string query =
-                    "UPDATE students SET name = @name, nis = @nis WHERE id = @id";
+                    "UPDATE students SET name = @name, nis = @nis, " +
+                    "class_name = @class, address = @address WHERE id = @id";
 
                 using MySqlCommand cmd = new MySqlCommand(query, conn);
 
-                cmd.Parameters.AddWithValue("@name", nama);
-                cmd.Parameters.AddWithValue("@nis", nis);
+                cmd.Parameters.AddWithValue("@name", txtName.Text.Trim());
+                cmd.Parameters.AddWithValue("@nis", txtNIS.Text.Trim());
+                cmd.Parameters.AddWithValue("@class", txtClass.Text.Trim());
+                cmd.Parameters.AddWithValue("@address", txtAddress.Text.Trim());
                 cmd.Parameters.AddWithValue("@id", studentId);
 
                 conn.Open();
@@ -182,19 +224,19 @@ namespace SchoolApp
                 else
                     MessageBox.Show("Data student tidak ditemukan");
 
-                txtName.Clear();
-                txtNIS.Clear();
-                studentId = 0;
-
-                ShowData();
+                ClearStudentForm();
+                ShowData(txtSearchStudent.Text.Trim());
             }
             catch (MySqlException ex)
             {
-                MessageBox.Show("Database bermasalah: " + ex.Message);
+                if (ex.Number == 1062)
+                    MessageBox.Show("NIS sudah dipakai siswa lain");
+                else
+                    MessageBox.Show("Database bermasalah: " + ex.Message);
             }
         }
 
-        private void btnDeleteStudent_Click(object sender, EventArgs e)
+        private void btnDeleteStudent_Click(object? sender, EventArgs e)
         {
             if (studentId == 0)
             {
@@ -227,11 +269,8 @@ namespace SchoolApp
 
                 MessageBox.Show("Data student berhasil dihapus");
 
-                txtName.Clear();
-                txtNIS.Clear();
-                studentId = 0;
-
-                ShowData();
+                ClearStudentForm();
+                ShowData(txtSearchStudent.Text.Trim());
             }
             catch (MySqlException ex)
             {
@@ -239,9 +278,33 @@ namespace SchoolApp
             }
         }
 
-        
+        // =====================================================
+        //  VISITORS (tidak berubah)
+        // =====================================================
+        private void ShowVisitors()
+        {
+            try
+            {
+                using MySqlConnection conn =
+                    new MySqlConnection(connectionString);
 
-        private void btnSaveVisitors_Click(object sender, EventArgs e)
+                string query =
+                    "SELECT id, visitors, institution FROM visitors";
+
+                using MySqlDataAdapter adapter =
+                    new MySqlDataAdapter(query, conn);
+
+                DataTable tabel = new DataTable();
+                adapter.Fill(tabel);
+                dgvVisitors.DataSource = tabel;
+            }
+            catch (MySqlException ex)
+            {
+                MessageBox.Show("Database bermasalah: " + ex.Message);
+            }
+        }
+
+        private void btnSaveVisitors_Click(object? sender, EventArgs e)
         {
             string nama = txtVisitors.Text.Trim();
             string instansi = txtInstitution.Text.Trim();
@@ -284,7 +347,7 @@ namespace SchoolApp
         }
 
         private void dgvVisitors_CellClick(
-            object sender, DataGridViewCellEventArgs e)
+            object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0)
                 return;
@@ -292,11 +355,11 @@ namespace SchoolApp
             DataGridViewRow row = dgvVisitors.Rows[e.RowIndex];
 
             visitorId = Convert.ToInt32(row.Cells["id"].Value);
-            txtVisitors.Text = row.Cells["visitors"].Value.ToString();
-            txtInstitution.Text = row.Cells["institution"].Value.ToString();
+            txtVisitors.Text = row.Cells["visitors"].Value?.ToString() ?? "";
+            txtInstitution.Text = row.Cells["institution"].Value?.ToString() ?? "";
         }
 
-        private void btnUpdateVisitors_Click(object sender, EventArgs e)
+        private void btnUpdateVisitors_Click(object? sender, EventArgs e)
         {
             string nama = txtVisitors.Text.Trim();
             string instansi = txtInstitution.Text.Trim();
@@ -348,7 +411,7 @@ namespace SchoolApp
             }
         }
 
-        private void btnDeleteVisitors_Click(object sender, EventArgs e)
+        private void btnDeleteVisitors_Click(object? sender, EventArgs e)
         {
             if (visitorId == 0)
             {
