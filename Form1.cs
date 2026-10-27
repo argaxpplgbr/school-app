@@ -13,7 +13,6 @@ namespace SchoolApp
         private int studentId = 0;
         private int visitorId = 0;
 
-        // ===== ROUTING: daftar halaman yang bisa dibuka =====
         private enum Page
         {
             Student,
@@ -47,9 +46,6 @@ namespace SchoolApp
             Navigate(Page.Student); // halaman awal
         }
 
-        // =====================================================
-        //  ROUTER: pindah halaman Student <-> Visitor
-        // =====================================================
         private void Navigate(Page page)
         {
             pnlStudent.Visible = page == Page.Student;
@@ -76,9 +72,6 @@ namespace SchoolApp
             }
         }
 
-        // =====================================================
-        //  STUDENTS
-        // =====================================================
         private void ShowData(string keyword = "")
         {
             try
@@ -278,9 +271,6 @@ namespace SchoolApp
             }
         }
 
-        // =====================================================
-        //  VISITORS (tidak berubah)
-        // =====================================================
         private void ShowVisitors()
         {
             try
