@@ -63,6 +63,7 @@
             btnSubmitLogin.TabIndex = 3;
             btnSubmitLogin.Text = "Login";
             btnSubmitLogin.UseVisualStyleBackColor = true;
+            btnSubmitLogin.Click += btnSubmitLogin_Click;
             // 
             // btnNavToRegister
             // 

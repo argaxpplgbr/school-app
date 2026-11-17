@@ -41,7 +41,7 @@ namespace SchoolApp
             using(MySqlConnection connection = conn.ConnectionToSql())
             {
                 connection.Open();
-                string query = "INSERT INTO users (full_name, username, password VALUES (@full_name,@user,@pass)";
+                string query = "INSERT INTO users (full_name, username, password) VALUES (@full_name,@user,@pass)";
                     using (MySqlCommand cmd = new MySqlCommand(query,connection))
                 {
                     cmd.Parameters.AddWithValue("@full_name", txtFullName.Text);
